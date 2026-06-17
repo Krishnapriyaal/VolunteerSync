@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VolunteerSync Pro - Smart Matching</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    --surface: rgba(255, 255, 255, 0.03);
+    --surface-border: rgba(255, 255, 255, 0.1);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --sidebar-bg: rgba(15, 23, 42, 0.8);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+  }
+
+  [data-theme="light"] {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    --surface: rgba(255, 255, 255, 0.8);
+    --surface-border: rgba(0, 0, 0, 0.08);
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --sidebar-bg: rgba(255, 255, 255, 0.9);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-gradient);
+    color: var(--text-main);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  .app-container {
+    display: none;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+
+  .app-container.visible {
+    display: flex;
+    opacity: 1;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px;
+    background: var(--sidebar-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-right: 1px solid var(--surface-border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    z-index: 10;
+  }
+
+  .sidebar-header {
+    padding: 0 24px 24px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--primary);
+  }
+
+  .nav-items {
+    flex: 1;
+    padding: 24px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+  }
+
+  .nav-items::-webkit-scrollbar { width: 4px; }
+  .nav-items::-webkit-scrollbar-thumb { background: var(--surface-border); border-radius: 4px; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .nav-item:hover {
+    background: var(--surface);
+    color: var(--text-main);
+  }
+
+  .nav-item.active-nav {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  .sidebar-footer {
+    padding: 24px 24px 0;
+    border-top: 1px solid var(--surface-border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Main Content */
+  .main-content {
+    flex: 1;
+    position: relative;
+    overflow-y: auto;
+    padding: 40px;
+    scroll-behavior: smooth;
+  }
+
+  .main-content::-webkit-scrollbar { width: 8px; }
+  .main-content::-webkit-scrollbar-thumb { background: var(--surface-border); border-radius: 4px; }
+
+  .page {
+    display: none;
+    animation: fadeIn 0.4s ease forwards;
+  }
+  
+  .page.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .page-header {
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  
+  .page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .page-subtitle {
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  /* Grid Layouts */
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .card-header {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .card-header i { color: var(--primary); }
+
+  /* Stats */
+  .stat-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .stat-icon {
+    font-size: 1.75rem;
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.15);
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+  }
+
+  .stat-info { display: flex; flex-direction: column; }
+  .stat-value { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  .stat-label { color: var(--text-muted); font-size: 0.875rem; font-weight: 500; }
+
+  /* Form Elements */
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; margin-bottom: 8px; font-size: 0.875rem;
+    font-weight: 500; color: var(--text-muted);
+  }
+
+  input, select {
+    width: 100%; padding: 12px 16px; background: rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--surface-border); border-radius: 8px;
+    color: inherit; font-family: inherit; font-size: 0.95rem;
+    transition: all 0.2s;
+  }
+
+  [data-theme="light"] input,
+  [data-theme="light"] select { background: #fff; color: #0f172a; }
+
+  input::placeholder { color: var(--text-muted); opacity: 0.7; }
+  input[disabled] { opacity: 0.6; cursor: not-allowed; }
+  input:focus, select:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+
+  button {
+    background: var(--primary); color: white; border: none; padding: 12px 24px;
+    border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    font-family: inherit; font-size: 0.95rem; display: inline-flex;
+    align-items: center; justify-content: center; gap: 8px; width: 100%;
+  }
+
+  button:hover {
+    background: var(--primary-hover); transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3);
+  }
+  button:active { transform: translateY(0); }
+
+  button.outline {
+    background: transparent; border: 1px solid var(--surface-border);
+    color: var(--text-main);
+  }
+  button.outline:hover { background: var(--surface); box-shadow: none; }
+  button.w-auto { width: auto; }
+
+  /* List */
+  .list {
+    list-style: none; max-height: 500px; overflow-y: auto; padding-right: 8px;
+  }
+  .list::-webkit-scrollbar { width: 6px; }
+  .list::-webkit-scrollbar-thumb { background: var(--surface-border); border-radius: 3px; }
+  
+  .list-item {
+    background: var(--surface); border: 1px solid var(--surface-border);
+    margin-bottom: 8px; padding: 16px; border-radius: 12px; display: flex;
+    justify-content: space-between; align-items: center; transition: border-color 0.2s;
+  }
+  .list-item:hover { border-color: var(--primary); }
+  .item-main { display: flex; flex-direction: column; gap: 4px; }
+  .item-title { font-weight: 600; }
+  .item-subtitle { font-size: 0.85rem; color: var(--text-muted); }
+
+  .badge {
+    background: rgba(99, 102, 241, 0.15); color: var(--primary);
+    padding: 6px 12px; border-radius: 20px; font-size: 0.75rem;
+    font-weight: 600; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .badge.success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+  .badge.warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+
+  /* Volunteer Directory Cards */
+  .vol-card {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .vol-card img {
+    width: 90px; height: 90px; border-radius: 50%; object-fit: cover;
+    margin-bottom: 16px; border: 3px solid var(--primary); background: var(--surface);
+  }
+  .vol-details {
+    width: 100%; margin-top: 16px; font-size: 0.85rem; text-align: left;
+    display: grid; grid-template-columns: auto 1fr; gap: 8px 12px;
+  }
+  .detail-label { color: var(--text-muted); font-weight: 600; }
+  .detail-value { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .toast {
+    background: #1e293b; color: #f8fafc; padding: 16px 24px; border-radius: 10px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); font-weight: 500;
+    display: flex; align-items: center; gap: 12px; transform: translateX(120%);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border-left: 4px solid var(--primary);
+  }
+  [data-theme="light"] .toast { background: #fff; color: #0f172a; }
+  .toast.show { transform: translateX(0); }
+  .toast i { color: var(--primary); font-size: 1.25rem; }
+
+  /* Login Overlay */
+  .login-overlay {
+    position: fixed; inset: 0; background: var(--bg-gradient); z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    transition: opacity 0.4s ease;
+  }
+  .login-card { width: 100%; max-width: 420px; }
+
+  /* AI Output */
+  .ai-message {
+    background: rgba(99, 102, 241, 0.1); border-left: 3px solid var(--primary);
+    padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 12px;
+    font-size: 0.95rem; display: flex; align-items: flex-start; gap: 12px;
+  }
+  .ai-message i { color: var(--primary); margin-top: 2px; }
+  .ai-success { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
+  .ai-success i { color: var(--success); }
+  .ai-warning { border-color: var(--warning); background: rgba(245, 158, 11, 0.1); }
+  .ai-warning i { color: var(--warning); }
+  
+  /* Login Tabs */
+  .login-tabs { display: flex; gap: 16px; margin-bottom: 24px; border-bottom: 2px solid var(--surface-border); padding-bottom: 8px; justify-content: center; }
+  .login-tab { font-weight: 600; color: var(--text-muted); cursor: pointer; padding: 8px 16px; border-radius: 8px; transition: 0.2s; }
+  .login-tab:hover { color: var(--text-main); background: var(--surface); }
+  .login-tab.active-tab { color: var(--primary); background: rgba(99,102,241,0.1); }
+  
+  /* Rating Stars */
+  .rating-star { cursor: pointer; color: #fbbf24; transition: transform 0.1s; }
+  .rating-star:hover { transform: scale(1.2); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginOverlay" class="login-overlay">
+  <div class="card login-card">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <i class="fa-solid fa-hands-holding-circle" style="font-size: 3rem; color: var(--primary); margin-bottom: 16px;"></i>
+      <h2 style="font-size: 1.75rem; margin-bottom: 8px;">VolunteerSync Pro</h2>
+    </div>
+    
+    <div class="login-tabs" style="flex-wrap: wrap;">
+      <div class="login-tab active-tab" id="tabVolLogin" onclick="setLoginTab('volLogin')">Vol. Login</div>
+      <div class="login-tab" id="tabVolReg" onclick="setLoginTab('volReg')">Vol. Register</div>
+      <div class="login-tab" id="tabAdminLogin" onclick="setLoginTab('adminLogin')">Admin Login</div>
+      <div class="login-tab" id="tabAdminReg" onclick="setLoginTab('adminReg')">Admin Reg.</div>
+    </div>
+
+    <!-- Volunteer Login -->
+    <form id="formVolLogin" onsubmit="handleVolLogin(event); return false;">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginVolEmail" value="sarah@demo.com" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginVolPwd" value="123" required>
+      </div>
+      <button type="submit" style="margin-top: 8px;">Access Portal</button>
+    </form>
+
+    <!-- Volunteer Register -->
+    <form id="formVolReg" onsubmit="handleVolRegister(event); return false;" style="display:none;">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="regVolName" required>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="regVolEmail" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="regVolPwd" required>
+      </div>
+      <button type="submit" style="margin-top: 8px;">Create Account</button>
+    </form>
+
+    <!-- Admin Login -->
+    <form id="formAdminLogin" onsubmit="handleAdminLogin(event); return false;" style="display:none;">
+      <div class="form-group">
+        <label>Administrator Email</label>
+        <input type="email" id="loginAdminEmail" value="jess@admin.com" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginAdminPwd" value="123" required>
+      </div>
+      <button type="submit" style="margin-top: 8px;"><i class="fa-solid fa-right-to-bracket"></i> Enter Dashboard</button>
+    </form>
+
+    <!-- Admin Register -->
+    <form id="formAdminReg" onsubmit="handleAdminRegister(event); return false;" style="display:none;">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="regAdminName" required>
+      </div>
+      <div class="form-group">
+        <label>Organization / Team</label>
+        <input type="text" id="regAdminOrg" required>
+      </div>
+      <div class="form-group">
+        <label>Admin Email</label>
+        <input type="email" id="regAdminEmail" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="regAdminPwd" required>
+      </div>
+      <button type="submit" style="margin-top: 8px;"><i class="fa-solid fa-shield"></i> Register Administrator</button>
+    </form>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appContainer" class="app-container">
+  
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-hands-holding-circle"></i> VolunteerSync
+    </div>
+    
+    <nav class="nav-items">
+      <!-- Admin Nav -->
+      <div id="navGroupAdmin" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="nav-item active-nav" onclick="switchPage('dashboard', this)">
+          <i class="fa-solid fa-chart-pie" style="width:20px;"></i> Dashboard
+        </div>
+        <div class="nav-item" onclick="switchPage('directory', this)">
+          <i class="fa-solid fa-address-book" style="width:20px;"></i> Directory
+        </div>
+        <div class="nav-item" onclick="switchPage('assignments', this)">
+          <i class="fa-solid fa-list-check" style="width:20px;"></i> Assignments
+        </div>
+        <div class="nav-item" onclick="switchPage('adminProfile', this)">
+          <i class="fa-solid fa-user-shield" style="width:20px;"></i> Admin Setup
+        </div>
+        <div class="nav-item" onclick="switchPage('ai', this)">
+          <i class="fa-solid fa-wand-magic-sparkles" style="width:20px;"></i> AI Insights
+        </div>
+      </div>
+
+      <!-- Volunteer Nav -->
+      <div id="navGroupVol" style="display:none; flex-direction:column; gap:8px;">
+        <div class="nav-item" onclick="switchPage('volDashboard', this)" id="volDefaultTab">
+          <i class="fa-solid fa-user" style="width:20px;"></i> My Profile
+        </div>
+        <div class="nav-item" onclick="switchPage('volMarket', this)">
+          <i class="fa-solid fa-earth-americas" style="width:20px;"></i> Task Market
+        </div>
+        <div class="nav-item" onclick="switchPage('volTasks', this)">
+          <i class="fa-solid fa-clipboard-check" style="width:20px;"></i> My Tasks
+        </div>
+      </div>
+
+      <div class="nav-item" onclick="switchPage('about', this)" style="margin-top:auto;">
+        <i class="fa-solid fa-circle-info" style="width:20px;"></i> Platform About
+      </div>
+    </nav>
+    
+    <div class="sidebar-footer">
+      <div class="nav-item" style="padding: 12px 16px;" onclick="toggleTheme()">
+        <i class="fa-solid fa-moon" id="themeIcon" style="width:20px;"></i>
+        <span id="themeText">Dark Mode</span>
+      </div>
+      <div class="nav-item" style="padding: 12px 16px; color: var(--danger);" onclick="logout()">
+        <i class="fa-solid fa-arrow-right-from-bracket" style="width:20px;"></i> Sign Out
+      </div>
+      <div style="margin-top: 16px; display:flex; align-items:center; gap: 12px;">
+        <div style="width:36px; height:36px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700; color:white;">
+          <span id="userInitial">A</span>
+        </div>
+        <div style="flex:1; overflow:hidden;">
+          <div id="profileNameDisplay" style="font-weight:600; font-size:0.9rem; white-space:nowrap; text-overflow:ellipsis;">Admin Name</div>
+          <div id="profileOrgDisplay" style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap; text-overflow:ellipsis;">Organization</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENT AREA -->
+  <main class="main-content">
+    
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="page active">
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Overview</h1>
+          <p class="page-subtitle">Welcome back, here's what's happening today.</p>
+        </div>
+        <div class="header-actions">
+          <button class="outline w-auto" onclick="switchPage('assignments', document.querySelectorAll('.nav-item')[2])">
+            View Assignments
+          </button>
+        </div>
+      </header>
+
+      <div class="grid-3">
+        <div class="card stat-card">
+          <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+          <div class="stat-info">
+            <span class="stat-value" id="vCount">0</span>
+            <span class="stat-label">Total Volunteers</span>
+          </div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--success);">
+            <i class="fa-solid fa-clipboard-list"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="tCount">0</span>
+            <span class="stat-label">Active Tasks</span>
+          </div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--warning);">
+            <i class="fa-solid fa-link"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="aCount">0%</span>
+            <span class="stat-label">Tasks Fully Matched</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Add Volunteer Details Form -->
+        <div class="card">
+          <div class="card-header">
+            <span><i class="fa-solid fa-user-plus"></i> Onboard Volunteer</span>
+          </div>
+          <form onsubmit="addVolunteer(event); return false;">
+            <div class="grid-2" style="gap: 16px; margin-bottom: 0;">
+                <div class="form-group" style="grid-column: span 2;">
+                  <label>Full Name</label>
+                  <input type="text" id="vName" placeholder="e.g. John Doe" required>
+                </div>
+                <div class="form-group">
+                  <label>Phone Number</label>
+                  <input type="tel" id="vPhone" placeholder="+1 234 567 890" required>
+                </div>
+                <div class="form-group">
+                  <label>Gender</label>
+                  <select id="vGender" required>
+                    <option value="" disabled selected>Select</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Blood Group</label>
+                  <select id="vBlood" required>
+                    <option value="" disabled selected>Select</option>
+                    <option>A+</option><option>A-</option>
+                    <option>B+</option><option>B-</option>
+                    <option>AB+</option><option>AB-</option>
+                    <option>O+</option><option>O-</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                    <label>Current Location</label>
+                    <input type="text" id="vLocation" placeholder="Locality / City" required>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label>Address</label>
+                  <input type="text" id="vAddress" placeholder="Full residential address" required>
+                </div>
+                <div class="form-group">
+                  <label>Core Skill</label>
+                  <select id="vSkill" required>
+                    <option value="" disabled selected>Select a skill area</option>
+                    <option>Logistics</option>
+                    <option>Communications</option>
+                    <option>Medical Support</option>
+                    <option>Technical</option>
+                    <option>General Support</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Availability</label>
+                  <select id="vAvailability">
+                    <option value="Available">Available Now</option>
+                    <option value="Busy">Currently Busy</option>
+                  </select>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label>Profile Picture URL (Optional)</label>
+                  <input type="url" id="vPic" placeholder="https://example.com/photo.jpg">
+                </div>
+            </div>
+            <button type="submit" style="margin-top: 8px;">Add Volunteer</button>
+          </form>
+        </div>
+
+        <!-- Add Task Details Form -->
+        <div class="card">
+          <div class="card-header">
+            <span><i class="fa-solid fa-thumbtack"></i> Create Task</span>
+          </div>
+          <form onsubmit="addTask(event); return false;">
+            <div class="form-group">
+              <label>Task Description</label>
+              <input type="text" id="tName" placeholder="e.g. Check-in Desk setup" required>
+            </div>
+            <div class="form-group">
+              <label>Task Location Details</label>
+              <input type="text" id="tLocation" placeholder="e.g. Main Hall Entrance" required>
+            </div>
+            <div class="grid-2" style="margin-bottom:0; gap: 16px;">
+                <div class="form-group">
+                  <label>Required Skill</label>
+                  <select id="tSkill" required>
+                    <option value="" disabled selected>Select required skill</option>
+                    <option>Logistics</option>
+                    <option>Communications</option>
+                    <option>Medical Support</option>
+                    <option>Technical</option>
+                    <option>General Support</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>No. of Volunteers Required</label>
+                  <input type="number" id="tReqCount" min="1" value="1" required>
+                </div>
+            </div>
+            <button type="submit" style="margin-top: 8px;">Add Task</button>
+          </form>
+        </div>
+      </div>
+    </div> <!-- END DASHBOARD -->
+
+    <!-- VOLUNTEER DIRECTORY -->
+    <div id="directory" class="page">
+        <header class="page-header">
+            <div>
+              <h1 class="page-title">Volunteer Roster</h1>
+              <p class="page-subtitle">Complete list of registered personnel and their details.</p>
+            </div>
+        </header>
+
+        <div class="grid-4" id="directoryGrid">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+
+    <!-- ASSIGNMENTS -->
+    <div id="assignments" class="page">
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Task Assignments</h1>
+          <p class="page-subtitle">Manage allocations and monitor active workflows.</p>
+        </div>
+        <div class="header-actions">
+          <button class="w-auto" onclick="assignTasks()">
+            <i class="fa-solid fa-bolt"></i> Auto-Assign Smart Match
+          </button>
+        </div>
+      </header>
+      
+      <div class="card">
+        <div class="card-header">
+          <span><i class="fa-solid fa-list-check"></i> Current Allocations</span>
+          <span class="badge" id="allocBadge">0 matched</span>
+        </div>
+        
+        <ul class="list" id="assignmentList">
+          <!-- Rendered by JS -->
+        </ul>
+      </div>
+
+      <!-- INCOMING APPLICATIONS FROM MARKET -->
+      <div class="card" style="margin-top:24px;">
+        <div class="card-header">
+          <span><i class="fa-solid fa-inbox"></i> Incoming Task Applications</span>
+        </div>
+        <ul class="list" id="applicationsInbox">
+          <!-- Rendered by JS -->
+        </ul>
+      </div>
+    </div>
+    
+    <!-- ADMIN PROFILE -->
+    <div id="adminProfile" class="page">
+        <header class="page-header">
+            <div>
+              <h1 class="page-title">Admin Profile Setup</h1>
+              <p class="page-subtitle">Configure your system administrator details.</p>
+            </div>
+        </header>
+
+        <div class="card" style="max-width: 600px;">
+            <div class="card-header">
+                <span><i class="fa-solid fa-id-badge"></i> System Administrator Data</span>
+            </div>
+            <form onsubmit="updateAdminProfile(event); return false;">
+                <div class="form-group">
+                  <label>Display Name</label>
+                  <input type="text" id="adminNameInput" required disabled>
+                </div>
+                <div class="form-group">
+                  <label>Organization / Department</label>
+                  <input type="text" id="adminOrgInput" required disabled>
+                </div>
+                <div class="form-group">
+                  <label>Admin Access Level</label>
+                  <input type="text" value="Marketplace Administrator" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Your Reliability Score</label>
+                    <div id="adminScoreDisplay" style="font-size: 2rem; font-weight:700; color:var(--primary);">0 pts</div>
+                    <p style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;">Score increases based on tasks posted and applications accepted.</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI INSIGHTS -->
+    <div id="ai" class="page">
+        <!-- Rendered by existing logic -->
+        <header class="page-header">
+            <div>
+              <h1 class="page-title">AI Insights</h1>
+              <p class="page-subtitle">Intelligent analysis and optimization recommendations.</p>
+            </div>
+          </header>
+    
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+              <div>
+                <h3 style="font-size:1.125rem; font-weight:600;"><i class="fa-solid fa-microchip" style="color:var(--primary); margin-right:8px;"></i> Match Analysis Report</h3>
+              </div>
+              <button class="w-auto outline" onclick="generateAI()">
+                <i class="fa-solid fa-rotate"></i> Analyze Now
+              </button>
+            </div>
+            
+            <div id="aiOutput">
+              <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                <i class="fa-solid fa-robot" style="font-size:3rem; margin-bottom:16px; opacity:0.5;"></i>
+                <p>Run the analysis to see intelligent insights.</p>
+              </div>
+            </div>
+          </div>
+    </div>
+
+    <!-- ABOUT -->
+    <div id="about" class="page">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">About Platform</h1>
+          </div>
+        </header>
+        
+        <div class="card" style="max-width: 800px;">
+          <h3 style="font-size:1.5rem; margin-bottom:16px;">VolunteerSync Pro v2.1</h3>
+          <p style="line-height:1.6; color:var(--text-muted); margin-bottom:24px;">
+            An advanced, AI-powered platform for smart volunteer-task allocation. 
+            Designed for modern operational needs, our platform seamlessly matches available skills with immediate task requirements to maximize event efficiency.
+          </p>
+          <div class="grid-2">
+            <div style="background:var(--bg-gradient); padding:20px; border-radius:12px;">
+              <i class="fa-solid fa-bolt" style="color:var(--primary); font-size:1.5rem; margin-bottom:12px;"></i>
+              <h4 style="margin-bottom:8px;">Real-time Matching</h4>
+              <p style="font-size:0.875rem; color:var(--text-muted);">Skill-based allocation system ensures the right people are put in the right places safely and efficiently, handling multi-person requirement logic easily.</p>
+            </div>
+            <div style="background:var(--bg-gradient); padding:20px; border-radius:12px;">
+              <i class="fa-solid fa-chart-line" style="color:var(--success); font-size:1.5rem; margin-bottom:12px;"></i>
+              <h4 style="margin-bottom:8px;">Operational Metrics</h4>
+              <p style="font-size:0.875rem; color:var(--text-muted);">Live tracking of fulfillment rates, resource data, task statuses, and detailed personnel profiles in the Volunteer Directory.</p>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+    <!-- VOLUNTEER PROFILE -->
+    <div id="volDashboard" class="page">
+        <header class="page-header">
+            <div>
+              <h1 class="page-title">My Profile</h1>
+              <p class="page-subtitle">Manage your personnel details and skills.</p>
+            </div>
+        </header>
+        <div class="card" style="max-width: 800px;">
+           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 24px;">
+               <div style="display:flex; gap: 20px; align-items:center;">
+                   <img id="myVolPic" src="" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
+                   <div>
+                       <h2 id="myVolName" style="font-size:1.5rem; font-weight:700;">Name</h2>
+                       <div style="color:var(--text-muted); font-size:0.9rem;" id="myVolEmail">email</div>
+                       <div style="margin-top:8px; font-weight:500;" id="myVolRatingDisplay">
+                           <!-- Stars injected here -->
+                       </div>
+                   </div>
+               </div>
+           </div>
+           
+           <form onsubmit="updateMyVolProfile(event); return false;">
+            <div class="grid-2" style="gap: 16px; margin-bottom: 0;">
+                <div class="form-group">
+                  <label>Phone Number</label>
+                  <input type="tel" id="myVolPhone" required>
+                </div>
+                <div class="form-group">
+                  <label>Gender</label>
+                  <select id="myVolGender">
+                    <option>Male</option><option>Female</option><option>Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Blood Group</label>
+                  <select id="myVolBlood">
+                    <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                    <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Current Location</label>
+                  <input type="text" id="myVolLocation">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label>Address</label>
+                  <input type="text" id="myVolAddress">
+                </div>
+                <div class="form-group">
+                  <label>Core Skill</label>
+                  <select id="myVolSkill" required>
+                    <option>Logistics</option><option>Communications</option><option>Medical Support</option><option>Technical</option><option>General Support</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Current Availability</label>
+                  <select id="myVolAvailability">
+                    <option value="Available">Available Now</option>
+                    <option value="Busy">Currently Busy</option>
+                  </select>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label>Profile Picture URL</label>
+                  <input type="url" id="myVolPicInput">
+                </div>
+            </div>
+            <button type="submit" style="margin-top: 16px;"><i class="fa-solid fa-floppy-disk"></i> Save Profile</button>
+          </form>
+        </div>
+    </div>
+
+    <!-- VOLUNTEER TASK MARKET -->
+    <div id="volMarket" class="page">
+        <header class="page-header">
+            <div>
+              <h1 class="page-title">Task Marketplace</h1>
+              <p class="page-subtitle">Find and apply for open missions created by verified Administrators.</p>
+            </div>
+        </header>
+        <div class="grid-2" id="marketGrid">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+
+    <!-- VOLUNTEER ASSIGNMENTS -->
+    <div id="volTasks" class="page">
+        <header class="page-header">
+            <div>
+              <h1 class="page-title">My Tasks</h1>
+              <p class="page-subtitle">Your current operational assignments.</p>
+            </div>
+        </header>
+        <div class="card">
+            <ul class="list" id="myTasksList">
+            </ul>
+        </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toastContainer" class="toast-container"></div>
+
+<script>
+// STATE
+let volunteers = [];
+let admins = [];
+let tasks = [];
+let assignments = [];
+let taskRequests = [];
+let darkTheme = true;
+let currentUser = { role: null, id: null, name: "" };
+
+// INITIALIZATION
+document.addEventListener('DOMContentLoaded', () => {
+  // Demo Data with Expanded Fields
+  volunteers = [
+    {
+        id: 1, name: "Sarah Connor", email: "sarah@demo.com", password: "123", phone: "+1 555-0101", address: "123 Main St, Apt 4B", 
+        currentLocation: "Downtown", bloodGroup: "O+", gender: "Female", 
+        profilePic: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah", 
+        skill: "Logistics", availability: "Available", rating: 5
+    },
+    {
+        id: 2, name: "Mike Chen", email: "mike@demo.com", password: "123", phone: "+1 555-0202", address: "456 Oak Rd", 
+        currentLocation: "North Campus", bloodGroup: "A-", gender: "Male", 
+        profilePic: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike", 
+        skill: "Technical", availability: "Available", rating: 4
+    },
+    {
+        id: 3, name: "Elena Rossi", email: "elena@demo.com", password: "123", phone: "+1 555-0303", address: "789 Pine Ave", 
+        currentLocation: "East District", bloodGroup: "B+", gender: "Female", 
+        profilePic: "https://api.dicebear.com/7.x/avataaars/svg?seed=Elena", 
+        skill: "Medical Support", availability: "Busy", rating: 5
+    },
+    {
+        id: 4, name: "John Smith", email: "john@demo.com", password: "123", phone: "+1 555-0404", address: "1 Valley Drive", 
+        currentLocation: "Suburbs", bloodGroup: "AB+", gender: "Male", 
+        profilePic: "https://api.dicebear.com/7.x/avataaars/svg?seed=John", 
+        skill: "Technical", availability: "Available", rating: 3
+    }
+  ];
+  
+  admins = [
+      { id: 101, name: "Jessica System", email: "jess@admin.com", password: "123", org: "Central HQ", rating: 4.8 }
+  ];
+
+  tasks = [
+    {id: 1, adminId: 101, name: "Setup Main Stage Audio", location: "Stage A", reqCount: 2, skill: "Technical"},
+    {id: 2, adminId: 101, name: "First Aid Tent Staffing", location: "Registration Tent", reqCount: 1, skill: "Medical Support"},
+    {id: 3, adminId: 101, name: "Crowd Control Gate C", location: "North Entrance", reqCount: 3, skill: "General Support"}
+  ];
+  
+  updateStats();
+  renderDirectory();
+});
+
+// NAVIGATION
+function switchPage(pageId, element) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  if (element) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-nav'));
+    element.classList.add('active-nav');
+  }
+}
+
+// LOGIN & ADMIN PROFILE
+function setLoginTab(tab) {
+    document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active-tab'));
+    document.getElementById('formVolLogin').style.display = 'none';
+    document.getElementById('formVolReg').style.display = 'none';
+    document.getElementById('formAdminLogin').style.display = 'none';
+    document.getElementById('formAdminReg').style.display = 'none';
+
+    if(tab === 'volLogin') {
+        document.getElementById('tabVolLogin').classList.add('active-tab');
+        document.getElementById('formVolLogin').style.display = 'block';
+    } else if(tab === 'volReg') {
+        document.getElementById('tabVolReg').classList.add('active-tab');
+        document.getElementById('formVolReg').style.display = 'block';
+    } else if(tab === 'adminLogin') {
+        document.getElementById('tabAdminLogin').classList.add('active-tab');
+        document.getElementById('formAdminLogin').style.display = 'block';
+    } else {
+        document.getElementById('tabAdminReg').classList.add('active-tab');
+        document.getElementById('formAdminReg').style.display = 'block';
+    }
+}
+
+function executeLoginUI(role, id, name) {
+    currentUser = { role, id, name };
+    
+    if(role === 'admin') {
+        document.getElementById('navGroupAdmin').style.display = 'flex';
+        document.getElementById('navGroupVol').style.display = 'none';
+        
+        const a = admins.find(ad => ad.id === id);
+        if(a) {
+            document.getElementById('adminNameInput').value = a.name;
+            document.getElementById('adminOrgInput').value = a.org;
+            document.getElementById('adminScoreDisplay').innerText = getAdminScore(a.id) + " pts";
+            document.getElementById('profileNameDisplay').innerText = a.name;
+            document.getElementById('profileOrgDisplay').innerText = a.org;
+            document.getElementById('userInitial').innerText = a.name.charAt(0).toUpperCase();
+        }
+        
+        renderAssignmentsList();
+        switchPage('dashboard', document.querySelector('#navGroupAdmin .nav-item'));
+    } else {
+        document.getElementById('navGroupAdmin').style.display = 'none';
+        document.getElementById('navGroupVol').style.display = 'flex';
+        
+        document.getElementById('profileNameDisplay').innerText = currentUser.name;
+        document.getElementById('profileOrgDisplay').innerText = "Volunteer";
+        document.getElementById('userInitial').innerText = currentUser.name.charAt(0).toUpperCase();
+        
+        populateVolProfile();
+        renderMarket();
+        renderMyTasks();
+        switchPage('volDashboard', document.getElementById('volDefaultTab'));
+    }
+
+    document.getElementById('loginOverlay').style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('appContainer').classList.add('visible');
+        showToast(`Welcome back, ${name}!`, "success");
+    }, 400);
+}
+
+function handleAdminLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginAdminEmail').value;
+  const pwd = document.getElementById('loginAdminPwd').value;
+  
+  const a = admins.find(ad => ad.email === email && ad.password === pwd);
+  if(a) {
+      executeLoginUI('admin', a.id, a.name);
+  } else {
+      showToast("Invalid admin credentials.", "warning");
+  }
+}
+
+function handleAdminRegister(e) {
+  e.preventDefault();
+  const name = document.getElementById('regAdminName').value;
+  const org = document.getElementById('regAdminOrg').value;
+  const email = document.getElementById('regAdminEmail').value;
+  const pwd = document.getElementById('regAdminPwd').value;
+  
+  if(admins.find(a => a.email === email)) {
+      showToast("Email already exists in Admin registry", "warning"); return;
+  }
+  
+  const newAdmin = { id: Date.now(), name, email, password: pwd, org, rating: 0 };
+  admins.push(newAdmin);
+  executeLoginUI('admin', newAdmin.id, newAdmin.name);
+}
+
+function handleVolLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginVolEmail').value;
+    const pwd = document.getElementById('loginVolPwd').value;
+    
+    const v = volunteers.find(vol => vol.email === email && vol.password === pwd);
+    if(v) {
+        executeLoginUI('volunteer', v.id, v.name);
+    } else {
+        showToast("Invalid email or password", "warning");
+    }
+}
+
+function handleVolRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById('regVolName').value;
+    const email = document.getElementById('regVolEmail').value;
+    const pwd = document.getElementById('regVolPwd').value;
+
+    if(volunteers.find(v => v.email === email)) {
+        showToast("Email already registered", "warning"); return;
+    }
+
+    const newVol = {
+        id: Date.now(), name, email, password: pwd, phone: "", address: "", 
+        currentLocation: "", bloodGroup: "O+", gender: "Other", 
+        profilePic: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`, 
+        skill: "General Support", availability: "Available", rating: 0
+    };
+    volunteers.push(newVol);
+    updateStats();
+    renderDirectory();
+    executeLoginUI('volunteer', newVol.id, newVol.name);
+}
+
+function getAdminScore(adminId) {
+    let createdCount = tasks.filter(t => t.adminId === adminId).length;
+    let acceptedCount = taskRequests.filter(tr => tr.adminId === adminId && tr.status === 'accepted').length;
+    return (createdCount * 10) + (acceptedCount * 20);
+}
+
+function logout() {
+  document.getElementById('appContainer').classList.remove('visible');
+  document.getElementById('loginOverlay').style.display = 'flex';
+  setTimeout(() => {
+    document.getElementById('loginOverlay').style.opacity = '1';
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginAdminPwd').value = '';
+    document.getElementById('regVolPwd').value = '';
+    document.getElementById('loginVolPwd').value = '';
+    currentUser = { role: null, id: null, name: "" };
+    showToast("Logged out successfully");
+  }, 100);
+}
+
+// DATA MANAGEMENT
+function addVolunteer(e) {
+  e.preventDefault();
+  const name = document.getElementById('vName').value;
+  const phone = document.getElementById('vPhone').value;
+  const gender = document.getElementById('vGender').value;
+  const bloodGroup = document.getElementById('vBlood').value;
+  const currentLocation = document.getElementById('vLocation').value;
+  const address = document.getElementById('vAddress').value;
+  let profilePic = document.getElementById('vPic').value;
+  const skill = document.getElementById('vSkill').value;
+  const availability = document.getElementById('vAvailability').value;
+  
+  if(!profilePic) {
+      profilePic = `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
+  }
+
+  volunteers.push({ 
+      id: Date.now(), name, phone, gender, bloodGroup, currentLocation, 
+      address, profilePic, skill, availability 
+  });
+  
+  e.target.reset();
+  updateStats();
+  renderDirectory();
+  showToast(`${name} added to roster`, "success");
+}
+
+function addTask(e) {
+  e.preventDefault();
+  const name = document.getElementById('tName').value;
+  const location = document.getElementById('tLocation').value;
+  const skill = document.getElementById('tSkill').value;
+  const reqCount = parseInt(document.getElementById('tReqCount').value);
+  
+  tasks.push({ id: Date.now(), adminId: currentUser.id, name, location, skill, reqCount });
+  
+  e.target.reset();
+  updateStats();
+  renderAssignmentsList();
+  
+  // Re-render score
+  document.getElementById('adminScoreDisplay').innerText = getAdminScore(currentUser.id) + " pts";
+  showToast(`Task "${name}" published to Marketplace`);
+}
+
+// VOLUNTEER DIRECTORY RENDERER
+function renderDirectory() {
+    const grid = document.getElementById('directoryGrid');
+    if(volunteers.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-muted);">No volunteers registered yet.</div>`;
+        return;
+    }
+
+    let html = "";
+    volunteers.forEach(v => {
+        const badge = v.availability === "Available" 
+            ? `<span class="badge success">Available</span>`
+            : `<span class="badge warning">Busy</span>`;
+
+        let starsHtml = "";
+        let r = parseInt(v.rating || 0);
+        for(let i=1; i<=5; i++) {
+            starsHtml += `<i class="${i <= r ? 'fa-solid' : 'fa-regular'} fa-star rating-star" onclick="rateVolunteer(${v.id}, ${i})"></i>`;
+        }
+
+        html += `
+        <div class="card vol-card">
+            <img src="${v.profilePic}" alt="${v.name}">
+            <h3 style="margin-bottom:4px; font-weight:600;">${v.name}</h3>
+            ${badge}
+            <div style="margin-top: 12px; font-size: 1.25rem;">
+                ${starsHtml}
+            </div>
+            
+            <div class="vol-details">
+                <span class="detail-label"><i class="fa-solid fa-phone"></i></span><span class="detail-value">${v.phone || 'N/A'}</span>
+                <span class="detail-label"><i class="fa-solid fa-droplet"></i></span><span class="detail-value" style="color:var(--danger);">${v.bloodGroup}</span>
+                <span class="detail-label"><i class="fa-solid fa-location-dot"></i></span><span class="detail-value" title="${v.currentLocation}">${v.currentLocation || 'N/A'}</span>
+                <span class="detail-label"><i class="fa-solid fa-star"></i></span><span class="detail-value">${v.skill}</span>
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; margin-top:16px; border-top:1px solid var(--surface-border); padding-top:12px; width:100%;">
+                Address: ${v.address || 'N/A'}
+            </div>
+        </div>
+        `;
+    });
+    grid.innerHTML = html;
+}
+
+function rateVolunteer(id, rating) {
+    if(currentUser.role !== 'admin') {
+        showToast("Only admins can rate volunteers", "warning"); return;
+    }
+    const idx = volunteers.findIndex(v => v.id === id);
+    if(idx !== -1) {
+        volunteers[idx].rating = rating;
+        renderDirectory();
+        if(currentUser.id === id) populateVolProfile(); // update their own view potentially
+        showToast(`Saved rating for ${volunteers[idx].name}`, "success");
+    }
+}
+
+// APPLICATIONS & ASSIGNMENTS
+function renderMarket() {
+    const grid = document.getElementById('marketGrid');
+    if(tasks.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-muted);">No active tasks currently posted.</div>`;
+        return;
+    }
+
+    let html = "";
+    tasks.forEach(t => {
+        // Find Admin
+        const ad = admins.find(a => a.id === t.adminId);
+        const adminName = ad ? ad.name : "Unknown Admin";
+        const adminOrg = ad ? ad.org : "Unknown Org";
+        const adminScore = ad ? getAdminScore(ad.id) : 0;
+        
+        // Find if current volunteer already requested this
+        const myReq = taskRequests.find(r => r.taskId === t.id && r.volId === currentUser.id);
+        
+        let actionHtml = `<button onclick="applyForTask(${t.id})" style="margin-top:16px;">Apply to Task</button>`;
+        if(myReq) {
+            if(myReq.status === 'pending') actionHtml = `<div class="badge warning" style="margin-top:16px; width:100%; justify-content:center;">Application Pending</div>`;
+            if(myReq.status === 'accepted') actionHtml = `<div class="badge success" style="margin-top:16px; width:100%; justify-content:center;">Accepted</div>`;
+            if(myReq.status === 'rejected') actionHtml = `<div class="badge danger" style="background:rgba(239,68,68,0.1); margin-top:16px; width:100%; justify-content:center; color:var(--danger)">Application Declined</div>`;
+        }
+        
+        // Count filled slots to see if it's full
+        const filled = taskRequests.filter(r => r.taskId === t.id && r.status === 'accepted').length;
+        const isFull = filled >= t.reqCount;
+        if(isFull && !myReq) actionHtml = `<div class="badge" style="margin-top:16px; width:100%; justify-content:center; background:rgba(0,0,0,0.1);">Task Full</div>`;
+
+        html += `
+        <div class="card">
+            <h3 style="margin-bottom:4px;">${t.name}</h3>
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">
+              <i class="fa-solid fa-location-dot"></i> ${t.location} &bull; <i class="fa-solid fa-users"></i> ${filled}/${t.reqCount} Staffed
+            </div>
+            <div style="background:var(--bg-gradient); padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85rem;">
+                <div style="font-weight:600; margin-bottom:4px; color:var(--text-main);"><i class="fa-solid fa-shield" style="color:var(--primary);"></i> Posted by ${adminName}</div>
+                <div style="color:var(--text-muted);">${adminOrg} &bull; Trust Score: <span style="color:var(--primary); font-weight:700;">${adminScore} pts</span></div>
+            </div>
+            <div class="vol-details">
+                <span class="detail-label">Required Skill</span><span class="detail-value">${t.skill}</span>
+            </div>
+            ${actionHtml}
+        </div>
+        `;
+    });
+    grid.innerHTML = html;
+}
+
+function applyForTask(taskId) {
+    if(currentUser.role !== 'volunteer') return;
+    const v = volunteers.find(vol => vol.id === currentUser.id);
+    if(!v) return;
+    
+    // Create pending request
+    taskRequests.push({ id: Date.now(), taskId: taskId, adminId: tasks.find(t=>t.id===taskId).adminId, volId: currentUser.id, volName: v.name, status: "pending" });
+    showToast("Application submitted to Admin!", "success");
+    renderMarket();
+    renderMyTasks();
+}
+
+function renderAssignmentsList() {
+    // 1. INBOX: Incoming requests
+    const inbox = document.getElementById('applicationsInbox');
+    let inboxHtml = "";
+    
+    // Find requests for tasks owned by this Admin
+    const pendingReqs = taskRequests.filter(r => r.adminId === currentUser.id && r.status === 'pending');
+    
+    if(pendingReqs.length === 0) {
+        inboxHtml = `<div style="text-align:center; padding:20px; color:var(--text-muted);">No pending applications at this time.</div>`;
+    } else {
+        pendingReqs.forEach(r => {
+            const taskObj = tasks.find(t => t.id === r.taskId);
+            inboxHtml += `
+            <li class="list-item">
+                <div class="item-main">
+                    <span class="item-title">${r.volName} applied for <strong>${taskObj.name}</strong></span>
+                    <span class="item-subtitle">Awaiting your approval.</span>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button onclick="respondRequest(${r.id}, 'accepted')" style="padding: 6px 12px; background:var(--success); width:auto;"><i class="fa-solid fa-check"></i> Accept</button>
+                    <button onclick="respondRequest(${r.id}, 'rejected')" style="padding: 6px 12px; background:var(--danger); width:auto;"><i class="fa-solid fa-xmark"></i> Reject</button>
+                </div>
+            </li>`;
+        });
+    }
+    if (inbox) inbox.innerHTML = inboxHtml;
+
+    // 2. ACTIVE ASSIGNMENTS
+    const list = document.getElementById('assignmentList');
+    let html = "";
+    let fullyMatchedTasks = 0;
+    
+    tasks.filter(t => t.adminId === currentUser.id).forEach(t => {
+        const acceptedVolReqs = taskRequests.filter(r => r.taskId === t.id && r.status === 'accepted');
+        const filledCount = acceptedVolReqs.length;
+        
+        let statusHtml = "";
+        if (filledCount >= t.reqCount) {
+            statusHtml = `<span class="badge success"><i class="fa-solid fa-check-double"></i> Fully Assigned (${filledCount}/${t.reqCount})</span>`;
+            fullyMatchedTasks++;
+        } else if (filledCount > 0) {
+            statusHtml = `<span class="badge" style="background:rgba(245,158,11,0.2); color:var(--warning);"><i class="fa-solid fa-star-half-stroke"></i> Partial Matched (${filledCount}/${t.reqCount})</span>`;
+        } else {
+            statusHtml = `<span class="badge" style="background:rgba(239,68,68,0.15); color:var(--danger);"><i class="fa-solid fa-clock"></i> Unassigned (0/${t.reqCount})</span>`;
+        }
+
+        let volsList = filledCount > 0 
+            ? `<div style="font-weight:600; text-align:right;">${acceptedVolReqs.map(r=>r.volName).join(", ")}</div>`
+            : `<div style="color:var(--text-muted); text-align:right;">No matching personnel available</div>`;
+
+        html += `
+          <li class="list-item" style="flex-direction:column; align-items:stretch; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div class="item-main">
+                  <span class="item-title">${t.name}</span>
+                  <span class="item-subtitle"><i class="fa-solid fa-location-dot" style="margin-right:4px;"></i>${t.location} &bull; Requires: ${t.skill}</span>
+                </div>
+                ${statusHtml}
+            </div>
+            <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px;">
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; text-align:right;">Assigned Team Members:</div>
+                ${volsList}
+            </div>
+          </li>
+        `;
+    });
+    
+    if(html === "") html = `<div style="text-align:center; padding:20px; color:var(--text-muted);">No tasks published by you yet.</div>`;
+    list.innerHTML = html;
+    
+    const myT = tasks.filter(t => t.adminId === currentUser.id).length;
+    document.getElementById('allocBadge').innerText = `${fullyMatchedTasks}/${myT} tasks matched`;
+}
+
+function respondRequest(reqId, status) {
+    const req = taskRequests.find(r => r.id === reqId);
+    if(req) {
+        req.status = status;
+        showToast(`Application ${status}!`, "success");
+        renderAssignmentsList();
+        
+        // Re-render score
+        document.getElementById('adminScoreDisplay').innerText = getAdminScore(currentUser.id) + " pts";
+    }
+}
+
+// MATCHING ALGORITHM (Multi-Assignment Support)
+function assignTasks() {
+  const myTasks = tasks.filter(t => t.adminId === currentUser.id);
+  if (myTasks.length === 0) {
+    showToast("No tasks available to auto-assign", "warning");
+    return;
+  }
+
+  let availableVols = JSON.parse(JSON.stringify(volunteers.filter(v => v.availability === "Available")));
+  
+  myTasks.forEach(t => {
+    let acceptedCnt = taskRequests.filter(r => r.taskId === t.id && r.status === 'accepted').length;
+    let countNeeded = (parseInt(t.reqCount) || 1) - acceptedCnt;
+
+    for (let i = 0; i < countNeeded; i++) {
+        let matchIndex = availableVols.findIndex(v => v.skill === t.skill);
+        if (matchIndex !== -1) {
+            const existingReq = taskRequests.find(r => r.taskId === t.id && r.volId === availableVols[matchIndex].id);
+            if(!existingReq) {
+                taskRequests.push({ id: Date.now() + Math.random(), taskId: t.id, adminId: t.adminId, volId: availableVols[matchIndex].id, volName: availableVols[matchIndex].name, status: "accepted" });
+            }
+            availableVols.splice(matchIndex, 1);
+        }
+    }
+  });
+  
+  renderAssignmentsList();
+  document.getElementById('adminScoreDisplay').innerText = getAdminScore(currentUser.id) + " pts";
+  showToast("Auto-assignment complete", "success");
+}
+
+// VOLUNTEER PORTAL FUNCTIONS
+function populateVolProfile() {
+    const v = volunteers.find(vol => vol.id === currentUser.id);
+    if(!v) return;
+    
+    document.getElementById('myVolName').innerText = v.name;
+    document.getElementById('myVolEmail').innerText = v.email;
+    document.getElementById('myVolPic').src = v.profilePic;
+    
+    let starsHtml = "";
+    let r = parseInt(v.rating || 0);
+    for(let i=1; i<=5; i++) {
+        starsHtml += `<i class="${i <= r ? 'fa-solid' : 'fa-regular'} fa-star" style="color:#fbbf24; margin-right:2px;"></i>`;
+    }
+    document.getElementById('myVolRatingDisplay').innerHTML = `Feedback Rating: ${starsHtml}`;
+
+    document.getElementById('myVolPhone').value = v.phone || '';
+    document.getElementById('myVolGender').value = v.gender || 'Other';
+    document.getElementById('myVolBlood').value = v.bloodGroup || 'O+';
+    document.getElementById('myVolLocation').value = v.currentLocation || '';
+    document.getElementById('myVolAddress').value = v.address || '';
+    document.getElementById('myVolSkill').value = v.skill || 'General Support';
+    document.getElementById('myVolAvailability').value = v.availability || 'Available';
+    document.getElementById('myVolPicInput').value = (v.profilePic.includes('dicebear')) ? '' : v.profilePic;
+}
+
+function updateMyVolProfile(e) {
+    e.preventDefault();
+    const v = volunteers.find(vol => vol.id === currentUser.id);
+    if(!v) return;
+
+    v.phone = document.getElementById('myVolPhone').value;
+    v.gender = document.getElementById('myVolGender').value;
+    v.bloodGroup = document.getElementById('myVolBlood').value;
+    v.currentLocation = document.getElementById('myVolLocation').value;
+    v.address = document.getElementById('myVolAddress').value;
+    v.skill = document.getElementById('myVolSkill').value;
+    v.availability = document.getElementById('myVolAvailability').value;
+    
+    let pic = document.getElementById('myVolPicInput').value;
+    if(pic) { v.profilePic = pic; }
+    
+    showToast("Profile Updated successfully!", "success");
+    populateVolProfile();
+    renderDirectory();  // Update directory just in case it is accessed
+}
+
+function renderMyTasks() {
+    const list = document.getElementById('myTasksList');
+    // Find all accepted task requests for me
+    const myAcceptedReqs = taskRequests.filter(r => r.volId === currentUser.id && r.status === 'accepted');
+    
+    if(myAcceptedReqs.length === 0) {
+        list.innerHTML = `
+        <div style="text-align:center; padding:40px; color:var(--text-muted); background:var(--surface); border-radius:12px; border:1px dashed var(--surface-border);">
+          <i class="fa-solid fa-mug-hot" style="font-size:3rem; margin-bottom:16px; opacity:0.5;"></i>
+          <p>You have no active assignments.</p>
+          <button onclick="switchPage('volMarket', document.querySelectorAll('#navGroupVol .nav-item')[1])" style="width:auto; margin-top:16px;">Browse Task Market</button>
+        </div>`;
+        return;
+    }
+
+    let html = "";
+    myAcceptedReqs.forEach(req => {
+        const t = tasks.find(ta => ta.id === req.taskId);
+        if(!t) return;
+        
+        const ad = admins.find(a => a.id === t.adminId);
+        const teamSize = taskRequests.filter(r => r.taskId === t.id && r.status === 'accepted').length;
+
+        html += `
+        <li class="list-item" style="flex-direction:column; align-items:stretch; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div class="item-main">
+                  <span class="item-title">${t.name}</span>
+                  <span class="item-subtitle"><i class="fa-solid fa-location-dot" style="margin-right:4px;"></i>${t.location} &bull; Required Skill: ${t.skill}</span>
+                </div>
+                <span class="badge success"><i class="fa-solid fa-bolt"></i> Action Required</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; font-size:0.85rem;">
+                <strong>Team deployment</strong>: Supervised by <strong>${ad ? ad.name : 'Admin'}</strong>. You are working alongside ${teamSize - 1} other member(s).
+            </div>
+        </li>`;
+    });
+    list.innerHTML = html;
+}
+
+function updateStats() {
+  document.getElementById('vCount').innerText = volunteers.length;
+  const myTasks = currentUser.role === 'admin' ? tasks.filter(t => t.adminId === currentUser.id) : tasks;
+  document.getElementById('tCount').innerText = myTasks.length;
+  
+  let fullyMatched = 0;
+  myTasks.forEach(t => {
+      const filled = taskRequests.filter(r => r.taskId === t.id && r.status === 'accepted').length;
+      if(filled >= (t.reqCount||1)) fullyMatched++;
+  });
+  
+  if (myTasks.length === 0) {
+    document.getElementById('aCount').innerText = "0%";
+  } else {
+    const rate = Math.round((fullyMatched / myTasks.length) * 100);
+    document.getElementById('aCount').innerText = `${rate}%`;
+  }
+}
+
+// AI ENGINE
+function generateAI() {
+  const output = document.getElementById('aiOutput');
+  output.innerHTML = `<div style="text-align:center; padding:40px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:var(--primary);"></i><p style="margin-top:12px; color:var(--text-muted);">Analyzing multi-assign requirements...</p></div>`;
+  
+  setTimeout(() => {
+    let html = "";
+    
+    // Skill Gap Analysis checking total count required vs total count available
+    let availableVols = volunteers.filter(v => v.availability === "Available");
+    
+    let requiredCounts = {};
+    let availableCounts = {};
+    
+    tasks.forEach(t => { requiredCounts[t.skill] = (requiredCounts[t.skill] || 0) + parseInt(t.reqCount||1); });
+    availableVols.forEach(v => { availableCounts[v.skill] = (availableCounts[v.skill] || 0) + 1; });
+    
+    let gaps = [];
+    for(let skill in requiredCounts) {
+        let needed = requiredCounts[skill];
+        let have = availableCounts[skill] || 0;
+        if(have < needed) { gaps.push(`${skill} (need ${needed}, have ${have})`); }
+    }
+    
+    if (gaps.length > 0) {
+      html += `
+        <div class="ai-message ai-warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <strong>Critical Skill Deficits Detected</strong><br>
+            <span>You lack sufficient available members to fulfill: <strong>${gaps.join("; ")}</strong>. Tasks will be partially assigned or unassigned.</span>
+          </div>
+        </div>`;
+    } else if (tasks.length > 0) {
+      html += `
+        <div class="ai-message ai-success">
+          <i class="fa-solid fa-check-double"></i>
+          <div>
+            <strong>Optimal Coverage</strong><br>
+            <span>All task dependencies match current available personnel counts. Full allocation probability is 100%.</span>
+          </div>
+        </div>`;
+    }
+    
+    if (html === "") {
+        html = `
+        <div class="ai-message">
+          <i class="fa-solid fa-thumbs-up"></i>
+          <div>
+            <strong>Insufficient Data</strong><br>
+            <span>Please add tasks and volunteers to analyze bandwidth.</span>
+          </div>
+        </div>`;
+    }
+
+    output.innerHTML = html;
+    showToast("AI Analysis Complete");
+  }, 1000);
+}
+
+// THEMING
+function toggleTheme() {
+  darkTheme = !darkTheme;
+  const root = document.documentElement;
+  const icon = document.getElementById('themeIcon');
+  const text = document.getElementById('themeText');
+  
+  if (darkTheme) {
+    root.removeAttribute('data-theme');
+    icon.classList.replace('fa-sun', 'fa-moon');
+    text.innerText = "Dark Mode";
+  } else {
+    root.setAttribute('data-theme', 'light');
+    icon.classList.replace('fa-moon', 'fa-sun');
+    text.innerText = "Light Mode";
+  }
+}
+
+// TOASTS
+function showToast(msg, type = "default") {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  
+  let iconHtml = '<i class="fa-solid fa-info-circle"></i>';
+  if (type === "success") iconHtml = '<i class="fa-solid fa-circle-check" style="color:var(--success);"></i>';
+  if (type === "warning") iconHtml = '<i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);"></i>';
+  
+  toast.innerHTML = `${iconHtml} <span>${msg}</span>`;
+  container.appendChild(toast);
+  
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 400);
+  }, 3000);
+}
+</script>
+</body>
+</html>
