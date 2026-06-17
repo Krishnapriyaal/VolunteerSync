@@ -396,6 +396,9 @@
         <label>Password</label>
         <input type="password" id="loginVolPwd" value="123" required>
       </div>
+      <div style="text-align: right; margin-top: -8px; margin-bottom: 16px;">
+        <a href="#" onclick="showForgotPassword('volunteer')" style="color: var(--primary); font-size: 0.85rem; text-decoration: none; font-weight: 500;">Forgot Password?</a>
+      </div>
       <button type="submit" style="margin-top: 8px;">Access Portal</button>
     </form>
 
@@ -426,6 +429,9 @@
         <label>Password</label>
         <input type="password" id="loginAdminPwd" value="123" required>
       </div>
+      <div style="text-align: right; margin-top: -8px; margin-bottom: 16px;">
+        <a href="#" onclick="showForgotPassword('admin')" style="color: var(--primary); font-size: 0.85rem; text-decoration: none; font-weight: 500;">Forgot Password?</a>
+      </div>
       <button type="submit" style="margin-top: 8px;"><i class="fa-solid fa-right-to-bracket"></i> Enter Dashboard</button>
     </form>
 
@@ -448,6 +454,31 @@
         <input type="password" id="regAdminPwd" required>
       </div>
       <button type="submit" style="margin-top: 8px;"><i class="fa-solid fa-shield"></i> Register Administrator</button>
+    </form>
+
+    <!-- Forgot Password Form -->
+    <form id="formForgotPassword" onsubmit="handleForgotPassword(event); return false;" style="display:none;">
+      <div style="margin-bottom: 20px; text-align: center;">
+        <h3 style="font-size: 1.25rem; margin-bottom: 8px;">Reset Password</h3>
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Enter your email and a new password to update your account.</p>
+      </div>
+      <div class="form-group">
+        <label>Account Type</label>
+        <select id="forgotRole" required>
+          <option value="volunteer">Volunteer</option>
+          <option value="admin">Administrator</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="forgotEmail" placeholder="email@example.com" required>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="forgotNewPwd" placeholder="Enter new password" required>
+      </div>
+      <button type="submit" style="margin-top: 8px;"><i class="fa-solid fa-key"></i> Update Password</button>
+      <button type="button" class="outline" onclick="cancelForgotPassword()" style="margin-top: 12px;">Back to Login</button>
     </form>
   </div>
 </div>
@@ -737,21 +768,26 @@
             <form onsubmit="updateAdminProfile(event); return false;">
                 <div class="form-group">
                   <label>Display Name</label>
-                  <input type="text" id="adminNameInput" required disabled>
+                  <input type="text" id="adminNameInput" required>
                 </div>
                 <div class="form-group">
                   <label>Organization / Department</label>
-                  <input type="text" id="adminOrgInput" required disabled>
+                  <input type="text" id="adminOrgInput" required>
                 </div>
                 <div class="form-group">
                   <label>Admin Access Level</label>
                   <input type="text" value="Marketplace Administrator" disabled>
                 </div>
                 <div class="form-group">
+                  <label>Password</label>
+                  <input type="password" id="adminPwdInput" placeholder="Enter new password to change">
+                </div>
+                <div class="form-group">
                     <label>Your Reliability Score</label>
                     <div id="adminScoreDisplay" style="font-size: 2rem; font-weight:700; color:var(--primary);">0 pts</div>
                     <p style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;">Score increases based on tasks posted and applications accepted.</p>
                 </div>
+                <button type="submit" style="margin-top: 16px;"><i class="fa-solid fa-floppy-disk"></i> Save Admin Profile</button>
             </form>
         </div>
     </div>
@@ -880,6 +916,10 @@
                 <div class="form-group" style="grid-column: span 2;">
                   <label>Profile Picture URL</label>
                   <input type="url" id="myVolPicInput">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label>Password</label>
+                  <input type="password" id="myVolPwdInput" placeholder="Enter new password to change">
                 </div>
             </div>
             <button type="submit" style="margin-top: 16px;"><i class="fa-solid fa-floppy-disk"></i> Save Profile</button>
@@ -1123,13 +1163,117 @@ function logout() {
   document.getElementById('loginOverlay').style.display = 'flex';
   setTimeout(() => {
     document.getElementById('loginOverlay').style.opacity = '1';
-    document.getElementById('loginUsername').value = '';
+    if (document.getElementById('loginUsername')) {
+      document.getElementById('loginUsername').value = '';
+    }
     document.getElementById('loginAdminPwd').value = '';
     document.getElementById('regVolPwd').value = '';
     document.getElementById('loginVolPwd').value = '';
     currentUser = { role: null, id: null, name: "" };
     showToast("Logged out successfully");
   }, 100);
+}
+
+// FORGOT & CHANGE PASSWORD FUNCTIONS
+function showForgotPassword(role) {
+    document.getElementById('formVolLogin').style.display = 'none';
+    document.getElementById('formVolReg').style.display = 'none';
+    document.getElementById('formAdminLogin').style.display = 'none';
+    document.getElementById('formAdminReg').style.display = 'none';
+    
+    document.querySelector('.login-tabs').style.display = 'none';
+    
+    document.getElementById('forgotRole').value = role;
+    document.getElementById('forgotEmail').value = '';
+    document.getElementById('forgotNewPwd').value = '';
+    
+    document.getElementById('formForgotPassword').style.display = 'block';
+}
+
+function cancelForgotPassword() {
+    document.getElementById('formForgotPassword').style.display = 'none';
+    document.querySelector('.login-tabs').style.display = 'flex';
+    
+    const activeTab = document.querySelector('.login-tab.active-tab');
+    if (activeTab) {
+        if (activeTab.id === 'tabVolLogin') {
+            setLoginTab('volLogin');
+        } else if (activeTab.id === 'tabVolReg') {
+            setLoginTab('volReg');
+        } else if (activeTab.id === 'tabAdminLogin') {
+            setLoginTab('adminLogin');
+        } else if (activeTab.id === 'tabAdminReg') {
+            setLoginTab('adminReg');
+        }
+    } else {
+        setLoginTab('volLogin');
+    }
+}
+
+function handleForgotPassword(e) {
+    e.preventDefault();
+    const role = document.getElementById('forgotRole').value;
+    const email = document.getElementById('forgotEmail').value.trim();
+    const newPwd = document.getElementById('forgotNewPwd').value;
+    
+    if (role === 'volunteer') {
+        const v = volunteers.find(vol => vol.email.toLowerCase() === email.toLowerCase());
+        if (v) {
+            v.password = newPwd;
+            showToast("Password updated successfully for Volunteer!", "success");
+            cancelForgotPassword();
+            
+            document.getElementById('loginVolEmail').value = email;
+            document.getElementById('loginVolPwd').value = newPwd;
+        } else {
+            showToast("No Volunteer account found with that email.", "warning");
+        }
+    } else if (role === 'admin') {
+        const a = admins.find(ad => ad.email.toLowerCase() === email.toLowerCase());
+        if (a) {
+            a.password = newPwd;
+            showToast("Password updated successfully for Administrator!", "success");
+            cancelForgotPassword();
+            
+            document.getElementById('loginAdminEmail').value = email;
+            document.getElementById('loginAdminPwd').value = newPwd;
+        } else {
+            showToast("No Administrator account found with that email.", "warning");
+        }
+    }
+}
+
+function updateAdminProfile(e) {
+    e.preventDefault();
+    const a = admins.find(ad => ad.id === currentUser.id);
+    if(!a) return;
+
+    a.name = document.getElementById('adminNameInput').value;
+    a.org = document.getElementById('adminOrgInput').value;
+    
+    const newPwd = document.getElementById('adminPwdInput').value;
+    if(newPwd) {
+        a.password = newPwd;
+        document.getElementById('adminPwdInput').value = '';
+    }
+
+    currentUser.name = a.name;
+    document.getElementById('profileNameDisplay').innerText = a.name;
+    document.getElementById('profileOrgDisplay').innerText = a.org;
+    document.getElementById('userInitial').innerText = a.name.charAt(0).toUpperCase();
+
+    showToast("Admin profile updated successfully!", "success");
+}
+
+function adminResetVolPassword(volId) {
+    const v = volunteers.find(vol => vol.id === volId);
+    if (!v) return;
+    const newPwd = prompt(`Enter new password for ${v.name}:`, v.password);
+    if (newPwd !== null && newPwd.trim() !== "") {
+        v.password = newPwd.trim();
+        showToast(`Password for ${v.name} has been reset successfully!`, "success");
+        renderDirectory();
+    }
 }
 
 // DATA MANAGEMENT
@@ -1216,6 +1360,9 @@ function renderDirectory() {
             <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; margin-top:16px; border-top:1px solid var(--surface-border); padding-top:12px; width:100%;">
                 Address: ${v.address || 'N/A'}
             </div>
+            \${currentUser.role === 'admin' ? \`
+            <button onclick="adminResetVolPassword(\${v.id})" class="outline" style="margin-top: 12px; padding: 6px 12px; font-size: 0.8rem; width: auto;"><i class="fa-solid fa-key"></i> Reset Password</button>
+            \` : ''}
         </div>
         `;
     });
@@ -1440,6 +1587,7 @@ function populateVolProfile() {
     document.getElementById('myVolSkill').value = v.skill || 'General Support';
     document.getElementById('myVolAvailability').value = v.availability || 'Available';
     document.getElementById('myVolPicInput').value = (v.profilePic.includes('dicebear')) ? '' : v.profilePic;
+    document.getElementById('myVolPwdInput').value = '';
 }
 
 function updateMyVolProfile(e) {
@@ -1457,6 +1605,12 @@ function updateMyVolProfile(e) {
     
     let pic = document.getElementById('myVolPicInput').value;
     if(pic) { v.profilePic = pic; }
+
+    const newPwd = document.getElementById('myVolPwdInput').value;
+    if(newPwd) {
+        v.password = newPwd;
+        document.getElementById('myVolPwdInput').value = '';
+    }
     
     showToast("Profile Updated successfully!", "success");
     populateVolProfile();
